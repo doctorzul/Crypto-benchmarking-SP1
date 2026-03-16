@@ -1,16 +1,17 @@
 import hashlib
-import time
-#import sys
-#import os
+import timeit
 
-def sha256_file(filepath):
+def sha256_file(filepath, runs=50):
     with open(filepath, "rb") as f:
-        file = f.read()
-    start = time.perf_counter()
-    hashlib.sha256(file).digest()
-    end = time.perf_counter()
-    time_us = (end - start) * 1000000
-    return time_us
+        data = f.read()
+
+    def hash_operation():
+        hashlib.sha256(data).digest()
+
+    total_time = timeit.timeit(hash_operation, number=runs)
+    avg_time = (total_time / runs) * 1_000_000
+
+    return avg_time
 
 if __name__ == "__main__":
     files = [
