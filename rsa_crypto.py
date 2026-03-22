@@ -12,6 +12,7 @@ import math
 import hashlib
 import timeit
 import math
+import utils
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 # key pair
@@ -134,27 +135,60 @@ def decrypt(message_cyphertext, d,n):
 def benchmark_rsa(filename, repetitions):
     """
     @brief Benchmarks the encryption and decryption times for a specific file.
+    @details Uses timeit.repeat to collect multiple independent samples for statistical analysis.
     @param filename The path to the file to be benchmarked.
     @param repetitions The number of times to run the benchmark for statistical significance.
-    @return A tuple containing two lists - (encryption_times_us, decryption_times_us).
+    @return A tuple containing two lists - (encryption_times_ms, decryption_times_ms).
     """
-    exec_times_encryption = []
-    exec_times_decryption = []
-    
+    if not os.path.exists(filename):
+        return [], []
+
     with open(filename, "rb") as f:
         plaintext = f.read()
+
+    # Measure encryption time (number=1 ensures independent samples for the list)
+    # The result is multiplied by 1000 to convert seconds to milliseconds (ms)
+    enc_times = timeit.repeat(lambda: encrypt(plaintext, e, n), repeat=repetitions, number=1)
+    exec_times_encryption = [t * 1000 for t in enc_times]
         
-    for i in range(repetitions):
-        execution_time = timeit.timeit(lambda: encrypt(plaintext, e, n), number=1)
-        # in microseconds 
-        exec_times_encryption.append(execution_time * 1_000_000)
-        
+    # Generate a valid ciphertext once to benchmark decryption consistently
     valid_ciphertext = encrypt(plaintext, e, n)
     
-   
-    for i in range(repetitions):
-        execution_time = timeit.timeit(lambda: decrypt(valid_ciphertext, d, n), number=1)
-        exec_times_decryption.append(execution_time * 1_000_000)
+    # Measure decryption time
+    dec_times = timeit.repeat(lambda: decrypt(valid_ciphertext, d, n), repeat=repetitions, number=1)
+    exec_times_decryption = [t * 1000 for t in dec_times]
         
     return exec_times_encryption, exec_times_decryption
 
+def run_performance_test():
+    """
+    @brief Orchestrates the performance benchmarking for RSA hybrid encryption.
+    @details Iterates through a predefined list of file sizes, collects raw timing 
+             data, and uses the utils module to display statistical results.
+    """
+    file_names = ["file_8.bin", "file_64.bin", "file_512.bin", "file_4096.bin", 
+                  "file_32768.bin", "file_262144.bin", "file_2097152.bin"]
+    
+    iterations = 100 
+
+    print(f"{'File Name':<20} | {'Mean (ms)':<10} | {'StdDev':<10} | {'95% CI'}")
+    print("-" * 75)
+
+    for filename in file_names:
+        # Collect raw lists of execution times from the benchmark function
+        enc_list, dec_list = benchmark_rsa(filename, iterations)
+        
+        if not enc_list:
+            print(f"Skipping {filename}: File not found.")
+            continue
+
+        # Process the raw data using the shared statistics utility
+        enc_stats = utils.calculate_statistics(enc_list)
+        dec_stats = utils.calculate_statistics(dec_list)
+
+        # Output formatted statistical results for both encryption and decryption
+        print(f"{filename:<20} | {enc_stats['mean']:<10.4f} | {enc_stats['stdev']:<10.4f} | [{enc_stats['ci_low']:.4f}, {enc_stats['ci_high']:.4f}] (Enc)")
+        print(f"{'':<20} | {dec_stats['mean']:<10.4f} | {dec_stats['stdev']:<10.4f} | [{dec_stats['ci_low']:.4f}, {dec_stats['ci_high']:.4f}] (Dec)")
+
+if __name__ == "__main__":
+    run_performance_test()
