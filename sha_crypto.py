@@ -12,7 +12,7 @@ def sha256_file(filepath, runs=100):
     timer.timeit(number=10)
 
     total_time = timer.timeit(number=runs)
-    return (total_time / runs) * 1_000_000  # microseconds
+    return (total_time / runs) * 1000000
 
 def sha256_file_stats(filepath, runs=100):
     with open(filepath, "rb") as f:
@@ -21,7 +21,7 @@ def sha256_file_stats(filepath, runs=100):
     timer = timeit.Timer(lambda: hashlib.sha256(data).digest())
     raw_times = timer.repeat(repeat=runs, number=1)
 
-    return [t * 1_000_000 for t in raw_times]
+    return [t * 1000000 for t in raw_times]
 
 if __name__ == "__main__":
     files = [

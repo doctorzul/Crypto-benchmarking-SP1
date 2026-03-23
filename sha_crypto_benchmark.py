@@ -10,7 +10,7 @@ import math
 file_sizes = [1024, 10240, 102400, 1048576, 5242880, 10485760]
 results = []
 
-print("File Size | Average Time | Median Time | Std Dev | CI (95%)")
+print("File Size       | Average Time | Median Time  | Std Dev    | CI (95%)")
 
 for size in file_sizes:
     temp_path = f"test_{size}.bin"
@@ -19,7 +19,8 @@ for size in file_sizes:
     
     all_times = sha_crypto.sha256_file_stats(
         temp_path, 
-        runs=1000 if size <= 10240 else 500
+        # runs=1000 if size <= 10240 else 500
+        runs=500
     )
     
     avg_time = statistics.mean(all_times)
