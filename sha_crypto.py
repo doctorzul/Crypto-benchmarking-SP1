@@ -1,17 +1,27 @@
 import hashlib
 import timeit
+import statistics
 
-def sha256_file(filepath, runs=50):
+def sha256_file(filepath, runs=100):
     with open(filepath, "rb") as f:
         data = f.read()
 
-    def hash_operation():
-        hashlib.sha256(data).digest()
+    timer = timeit.Timer(lambda: hashlib.sha256(data).digest())
 
-    total_time = timeit.timeit(hash_operation, number=runs)
-    avg_time = (total_time / runs) * 1_000_000
+    # Warm-up
+    timer.timeit(number=10)
 
-    return avg_time
+    total_time = timer.timeit(number=runs)
+    return (total_time / runs) * 1_000_000  # microseconds
+
+def sha256_file_stats(filepath, runs=100):
+    with open(filepath, "rb") as f:
+        data = f.read()
+
+    timer = timeit.Timer(lambda: hashlib.sha256(data).digest())
+    raw_times = timer.repeat(repeat=runs, number=1)
+
+    return [t * 1_000_000 for t in raw_times]
 
 if __name__ == "__main__":
     files = [
@@ -25,5 +35,8 @@ if __name__ == "__main__":
     ]
 
     for f in files:
-        t = sha256_file(f)
-        print(f"{f}: {round(t, 2)} microseconds")
+        avg = sha256_file(f)
+        stats = sha256_file_stats(f)
+
+        print(f"{f}: {avg:.2f} µs (avg)")
+        print(f"{f}: min={min(stats):.2f} µs, max={max(stats):.2f} µs, mean={statistics.mean(stats):.2f} µs")
