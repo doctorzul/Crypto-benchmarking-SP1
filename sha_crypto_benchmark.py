@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import math
 
-file_sizes = [1024, 10240, 102400, 1048576, 5242880, 10485760]
+file_sizes = [8, 64, 512, 4096, 32768, 262144, 2097152]
 results = []
 
 print("File Size       | Average Time | Median Time  | Std Dev    | CI (95%)")
