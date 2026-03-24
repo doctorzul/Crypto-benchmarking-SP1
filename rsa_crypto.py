@@ -1,36 +1,28 @@
 #!/usr/bin/env python3
 
-"""
-@file rsa_hybrid.py
-@brief RSA-based hybrid encryption implementation for Security and Privacy course.
-@details Implements a custom hybrid scheme using RSA-2048 for key encapsulation 
-         and SHA-256 for data encapsulation via a stream cipher approach.
-"""
-
-import os
-import math
 import hashlib
 import timeit
 import math
 import utils
+import os
+import math
 from cryptography.hazmat.primitives.asymmetric import rsa
+import matplotlib.pyplot as plot
+
+R_LENGTH_BITS = 256
 
 # key pair
 generated_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 public_key = generated_key.public_key()
 
 # number extraction
+d = generated_key.private_numbers().d # secret key
 n = public_key.public_numbers().n # product of two primes
 e = public_key.public_numbers().e # public
-d = generated_key.private_numbers().d # secret key
 
 def rsa_encrypt(m_int, e, n):
     """
     @brief Performs raw RSA encryption.
-    @param m_int The plaintext message converted to an integer.
-    @param e The public exponent.
-    @param n The modulus.
-    @return The resulting ciphertext as an integer (c = m^e mod n).
     """
     return pow(m_int, e, n)
 #implement key generation, inversion, evaluation
@@ -38,10 +30,6 @@ def rsa_encrypt(m_int, e, n):
 def rsa_decrypt(c_int, d, n):
     """
     @brief Performs raw RSA decryption.
-    @param c_int The ciphertext integer.
-    @param d The private exponent.
-    @param n The modulus.
-    @return The resulting plaintext as an integer (m = c^d mod n).
     """
     return pow(c_int, d, n)
 
@@ -49,41 +37,43 @@ def rsa_decrypt(c_int, d, n):
 def encrypt(message_bytes, e, n):
     """
     @brief Encrypts a message using a hybrid RSA/SHA-256 scheme.
-    @details Implements Enc(m; r) = (RSA(r), H(0, r) ^ m0, ..., H(n, r) ^ mn).
-    @param message_bytes The raw plaintext data (bytes).
-    @param e The RSA public exponent.
-    @param n The RSA modulus.
-    @return A byte string containing the 256-byte RSA-encrypted 'r' followed by the ciphertext blocks.
     """
-    # uniform value r - 256b
+    # uniform value r, 256b
     r_bytes = os.urandom(32)
 
     # converts r for an integer for math - one time secret session key
-    r_int = int.from_bytes(r_bytes, byteorder='big')
+    r_int = int.from_bytes(r_bytes, 'big')
     encrypted_r_int = rsa_encrypt(r_int, e, n)
 
     # convert back to bytes
-    encrypted_r_bytes = encrypted_r_int.to_bytes(256, byteorder='big')
+    encrypted_r_bytes = encrypted_r_int.to_bytes(R_LENGTH_BITS, 'big')
 
-    l = 32 # Hash output size of the hash function in bytes
-    message_length = len(message_bytes)
-    total_blocks = math.ceil(message_length / l) # how many 32 byte chunks to split into
-    
     ciphertext_blocks = []
+    l = 32 # Hash output size of the hash function in bytes
+    message_len = len(message_bytes)
+    total_blocks = math.ceil(message_len / l) # how many 32 byte chunks to split into
+    
+    # for every block
+    for block_i in range(total_blocks):
+        start_i = block_i * l
+        end_i = start_i + l
+        m_i = message_bytes[start_i:end_i] # the current block processed
 
-    for block_num in range(total_blocks):
-        start_index = block_num * l
-        end_index = start_index + l
-        m_i = message_bytes[start_index:end_index] # the current block processed
+        block_num_bytes = block_i.to_bytes(4, byteorder='big')
+        hash_input = block_num_bytes + r_bytes # Measure against two same plaintexts - include index
 
-        i_bytes = block_num.to_bytes(4, byteorder='big')
-        hash_input = i_bytes + r_bytes # Measure against two same plaintexts - include index
+        keystream_block = hashlib.sha256(hash_input).digest() # unique hash for every block
 
-        h_out = hashlib.sha256(hash_input).digest() # unique hash for every block
+        hash_out_truncated = keystream_block[:len(m_i)]
 
-        h_out_truncated = h_out[:len(m_i)]
-
-        c_i = bytes(a ^ b for a,b in zip(h_out_truncated, m_i)) # resulting encrypted block - xoring pairs
+        xor_result = []
+        for byte_i in range(len(m_i)):
+            keystream_b = hash_out_truncated[byte_i]
+            message_b = m_i[byte_i]
+            encrypted_b = keystream_b ^ message_b
+            xor_result.append(encrypted_b)
+        c_i = bytes(xor_result) 
+        
         ciphertext_blocks.append(c_i)
     
     final_ciphertext = encrypted_r_bytes + b"".join(ciphertext_blocks) # combine to one final bytestring
@@ -93,12 +83,8 @@ def encrypt(message_bytes, e, n):
 def decrypt(message_cyphertext, d,n):
     """
     @brief Decrypts a message encrypted with the hybrid RSA/SHA-256 scheme.
-    @param message_cyphertext The full ciphertext byte string (RSA(r) + data blocks).
-    @param d The RSA private exponent.
-    @param n The RSA modulus.
-    @return The original plaintext byte string.
     """
-    bytes_encrypted_r = message_cyphertext[:256] # 2048 bits
+    bytes_encrypted_r = message_cyphertext[0:256] # 2048 bits
     ciphertext_message = message_cyphertext[256:]
 
     # RSA mathematical inversion on int
@@ -106,39 +92,44 @@ def decrypt(message_cyphertext, d,n):
     decrypted_r = rsa_decrypt(encrypted_r, d, n)
     r_bytes = decrypted_r.to_bytes(32, byteorder='big')
 
-    l = 32 # because of sha-256
+    l = 32 # because of sha-256 (32*8 = 256)
+    plaintext_blocks = []
     message_len = len(ciphertext_message)
     total_blocks = math.ceil(message_len/32)
-
-    plaintext_blocks = []
 
     for block_num in range(total_blocks):
         # isolate chunk
         start_index = block_num * l
-        end_index = start_index + l
+        end_index = l + start_index
 
         c_index = ciphertext_message[start_index:end_index]
-        index_bytes = block_num.to_bytes(4, byteorder='big')
+        index_bytes = block_num.to_bytes(4, 'big')
 
         hash_input = index_bytes + r_bytes 
 
-        h_out = hashlib.sha256(hash_input).digest()
-        h_out_truncated = h_out[:len(c_index)] # trim last block if necessary
+        keystream_block = hashlib.sha256(hash_input).digest()
 
-        m_i = bytes(a ^ b for a,b in zip(h_out_truncated, c_index))
-        plaintext_blocks.append(m_i)
-    
+        # trim to match block size (mainlz for last block)
+        keystream = keystream_block[:len(c_index)]
+
+        # XOR to get back plaintext block
+        xor_result = []
+        #
+        for byte_i in range(len(c_index)):
+            keystream_b = keystream[byte_i]
+            ciphertext_b = c_index[byte_i]
+            decrypted_b = keystream_b ^ ciphertext_b
+            xor_result.append(decrypted_b)
+        plaintext_block = bytes(xor_result)
+        plaintext_blocks.append(plaintext_block)
+            
     final_plaintext = b"".join(plaintext_blocks)
     return final_plaintext
 
-
+# --- Benchmarking & Plotting ---
 def benchmark_rsa(filename, repetitions):
     """
     @brief Benchmarks the encryption and decryption times for a specific file.
-    @details Uses timeit.repeat to collect multiple independent samples for statistical analysis.
-    @param filename The path to the file to be benchmarked.
-    @param repetitions The number of times to run the benchmark for statistical significance.
-    @return A tuple containing two lists - (encryption_times_ms, decryption_times_ms).
     """
     if not os.path.exists(filename):
         return [], []
@@ -147,11 +138,9 @@ def benchmark_rsa(filename, repetitions):
         plaintext = f.read()
 
     # Measure encryption time (number=1 ensures independent samples for the list)
-    # The result is multiplied by 1000 to convert seconds to milliseconds (ms)
     enc_times = timeit.repeat(lambda: encrypt(plaintext, e, n), repeat=repetitions, number=1)
     exec_times_encryption = [t * 1000 for t in enc_times]
         
-    # Generate a valid ciphertext once to benchmark decryption consistently
     valid_ciphertext = encrypt(plaintext, e, n)
     
     # Measure decryption time
@@ -160,35 +149,109 @@ def benchmark_rsa(filename, repetitions):
         
     return exec_times_encryption, exec_times_decryption
 
+# GRAPH GENERATION - (partly generated with Gemini)
+def generate_plots(file_sizes, enc_avgs, enc_stds, dec_avgs, dec_stds):
+    """
+    @brief Generates and saves the individual and combined plots.
+    """
+    print("\nGenerating plots...")
+
+    # Plot of RSA Encryption Times
+    plot.figure(figsize=(10, 6))
+    plot.errorbar(file_sizes, enc_avgs, yerr=enc_stds, fmt='-o', color='blue', 
+                 capsize=5, capthick=1.5, label='RSA-2048 Hybrid Encrypt')
+    
+    plot.xscale('log', base=2)
+    plot.yscale('log') 
+    plot.title('RSA-Based Encryption Times vs. File Size')
+    plot.xlabel('File Size (bytes)')
+    plot.ylabel('Execution Time (ms)') 
+    plot.grid(True, which="both", ls="--", alpha=0.5)
+    plot.legend()
+    plot.savefig('rsa_encrypt_plot.png', bbox_inches='tight', dpi=300)
+    plot.close() 
+
+    # Plot of RSA Decryption Times
+    plot.figure(figsize=(10, 6))
+    plot.errorbar(file_sizes, dec_avgs, yerr=dec_stds, fmt='-s', color='red', 
+                 capsize=5, capthick=1.5, label='RSA-2048 Hybrid Decrypt')
+    
+    plot.xscale('log', base=2)
+    plot.yscale('log')
+    plot.title('RSA-Based Decryption Times vs. File Size')
+    plot.xlabel('File Size (bytes)')
+    plot.ylabel('Execution Time (ms)')
+    plot.grid(True, which="both", ls="--", alpha=0.5)
+    plot.legend()
+    plot.savefig('rsa_decrypt_plot.png', bbox_inches='tight', dpi=300)
+    plot.close()
+    
+    # Plot of combined Encryption vs Decryption
+    plot.figure(figsize=(10, 6))
+    plot.errorbar(file_sizes, enc_avgs, yerr=enc_stds, fmt='-o', color='blue', 
+                 capsize=5, capthick=1.5, label='Encryption')
+    plot.errorbar(file_sizes, dec_avgs, yerr=dec_stds, fmt='-s', color='red', 
+                 capsize=5, capthick=1.5, label='Decryption')
+    
+    plot.xscale('log', base=2)
+    plot.yscale('log')
+    plot.title('Comparison: RSA Hybrid Encryption vs. Decryption')
+    plot.xlabel('File Size (bytes)')
+    plot.ylabel('Execution Time (ms)')
+    plot.grid(True, which="both", ls="--", alpha=0.5)
+    
+    # Place the legend so it doesnt cover the lines
+    plot.legend(loc='upper left')
+    plot.savefig('rsa_combined_plot.png', bbox_inches='tight', dpi=300)
+    plot.close()
+
+    
 def run_performance_test():
     """
-    @brief Orchestrates the performance benchmarking for RSA hybrid encryption.
-    @details Iterates through a predefined list of file sizes, collects raw timing 
-             data, and uses the utils module to display statistical results.
+    @brief Prepares the performance benchmarking for RSA hybrid encryption.
     """
     file_names = ["file_8.bin", "file_64.bin", "file_512.bin", "file_4096.bin", 
                   "file_32768.bin", "file_262144.bin", "file_2097152.bin"]
+    file_sizes = [8, 64, 512, 4096, 32768, 262144, 2097152]
     
     iterations = 100 
 
-    print(f"{'File Name':<20} | {'Mean (ms)':<10} | {'StdDev':<10} | {'95% CI'}")
+    # Lists to store the final statistical data for the graphs
+    all_enc_avgs, all_enc_stds = [], []
+    all_dec_avgs, all_dec_stds = [], []
+
+    # Header 
+    print(f"{'File Name':<20} | {'Mean (ms)':<12} | {'StdDev':<10} | {'95% CI'}")
     print("-" * 75)
 
     for filename in file_names:
-        # Collect raw lists of execution times from the benchmark function
         enc_list, dec_list = benchmark_rsa(filename, iterations)
         
         if not enc_list:
             print(f"Skipping {filename}: File not found.")
+            # Pad lists with zeros so the graph doesn't crash if a file is missing
+            all_enc_avgs.append(0); all_enc_stds.append(0)
+            all_dec_avgs.append(0); all_dec_stds.append(0)
             continue
 
-        # Process the raw data using the shared statistics utility
+        # Process the raw data using the shared utils module
         enc_stats = utils.calculate_statistics(enc_list)
         dec_stats = utils.calculate_statistics(dec_list)
 
-        # Output formatted statistical results for both encryption and decryption
-        print(f"{filename:<20} | {enc_stats['mean']:<10.4f} | {enc_stats['stdev']:<10.4f} | [{enc_stats['ci_low']:.4f}, {enc_stats['ci_high']:.4f}] (Enc)")
-        print(f"{'':<20} | {dec_stats['mean']:<10.4f} | {dec_stats['stdev']:<10.4f} | [{dec_stats['ci_low']:.4f}, {dec_stats['ci_high']:.4f}] (Dec)")
+        # Append to our plotting lists
+        all_enc_avgs.append(enc_stats['mean'])
+        all_enc_stds.append(enc_stats['stdev'])
+        all_dec_avgs.append(dec_stats['mean'])
+        all_dec_stds.append(dec_stats['stdev'])
+
+        # Output formatted statistical results
+        print(f"{filename:<20} | {enc_stats['mean']:<12.4f} | {enc_stats['stdev']:<10.4f} | [{enc_stats['ci_low']:.4f}, {enc_stats['ci_high']:.4f}] (Enc)")
+        print(f"{'':<20} | {dec_stats['mean']:<12.4f} | {dec_stats['stdev']:<10.4f} | [{dec_stats['ci_low']:.4f}, {dec_stats['ci_high']:.4f}] (Dec)")
+        
+    # Trigger the plot generation using the collected data
+    generate_plots(file_sizes, all_enc_avgs, all_enc_stds, all_dec_avgs, all_dec_stds)
 
 if __name__ == "__main__":
     run_performance_test()
+
+# End of file: rsa_crypto.py
