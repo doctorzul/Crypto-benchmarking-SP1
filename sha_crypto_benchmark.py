@@ -1,27 +1,25 @@
 import sha_crypto
-# import hashlib
-# import timeit
-import os
 import statistics
 import matplotlib.pyplot as plt
 import pandas as pd
 import math
 
-file_sizes = [8, 64, 512, 4096, 32768, 262144, 2097152]
 results = []
 
 print("File Size       | Average Time | Median Time  | Std Dev    | CI (95%)")
 
-for size in file_sizes:
-    temp_path = f"test_{size}.bin"
-    with open(temp_path, "wb") as f:
-        f.write(os.urandom(size))
-    
-    all_times = sha_crypto.sha256_file_stats(
-        temp_path, 
-        # runs=1000 if size <= 10240 else 500
-        runs=500
-    )
+files = [
+    (8, "file_8.bin"),
+    (64, "file_64.bin"),
+    (512, "file_512.bin"),
+    (4096, "file_4096.bin"),
+    (32768, "file_32768.bin"),
+    (262144, "file_262144.bin"),
+    (2097152, "file_2097152.bin")
+]
+
+for size, f in files:
+    all_times = sha_crypto.sha256_file(f, runs=500)
     
     avg_time = statistics.mean(all_times)
     med_time = statistics.median(all_times)
@@ -38,16 +36,15 @@ for size in file_sizes:
         "StdDev": std_dev,
         "CI": ci_95
     })
-    
-    os.remove(temp_path)
 
 # === Plotting the results (Gemini) ===
 
 df = pd.DataFrame(results)
 
-plt.figure(figsize=(10, 6))
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-plt.errorbar(
+# Linear plot
+axes[0].errorbar(
     df["Size"], 
     df["Mean"], 
     yerr=df["CI"], 
@@ -55,14 +52,28 @@ plt.errorbar(
     linestyle='-',
     capsize=5
 )
+axes[0].set_title("Linear Scale")
+axes[0].set_xlabel("File Size (Bytes)")
+axes[0].set_ylabel("Time (Microseconds)")
+axes[0].grid(True, ls="--", alpha=0.5)
 
-plt.title("SHA-256 Generation Time vs. File Size (with 95% CI)")
-plt.xlabel("File Size (Bytes)")
-plt.ylabel("Time (Microseconds)")
-plt.xscale('log')
-plt.yscale('log')
-plt.grid(True, which="both", ls="--", alpha=0.5)
+# Log plot
+axes[1].errorbar(
+    df["Size"], 
+    df["Mean"], 
+    yerr=df["CI"], 
+    marker='o',
+    linestyle='-',
+    capsize=5
+)
+axes[1].set_title("Log-Log Scale")
+axes[1].set_xlabel("File Size (Bytes)")
+axes[1].set_ylabel("Time (Microseconds)")
+axes[1].set_xscale('log')
+axes[1].set_yscale('log')
+axes[1].grid(True, which="both", ls="--", alpha=0.5)
 
+plt.tight_layout()
 plt.show()
 
 # Questions To Be Answered:

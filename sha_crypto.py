@@ -11,14 +11,6 @@ def sha256_file(filepath, runs=100):
     # Warm-up
     timer.timeit(number=10)
 
-    total_time = timer.timeit(number=runs)
-    return (total_time / runs) * 1000000
-
-def sha256_file_stats(filepath, runs=100):
-    with open(filepath, "rb") as f:
-        data = f.read()
-
-    timer = timeit.Timer(lambda: hashlib.sha256(data).digest())
     raw_times = timer.repeat(repeat=runs, number=1)
 
     return [t * 1000000 for t in raw_times]
@@ -35,8 +27,9 @@ if __name__ == "__main__":
     ]
 
     for f in files:
-        avg = sha256_file(f)
-        stats = sha256_file_stats(f)
+        times = sha256_file(f, runs=100)
 
-        print(f"{f}: {avg:.2f} µs (avg)")
-        print(f"{f}: min={min(stats):.2f} µs, max={max(stats):.2f} µs, mean={statistics.mean(stats):.2f} µs")
+        print(f"{f}:")
+        print(f"  mean   = {statistics.mean(times):.2f} µs")
+        print(f"  median = {statistics.median(times):.2f} µs")
+        print(f"  stddev = {statistics.stdev(times):.2f} µs")
