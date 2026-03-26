@@ -137,73 +137,59 @@ def benchmark_rsa(filename, repetitions):
     with open(filename, "rb") as f:
         plaintext = f.read()
 
-    # Measure encryption time (number=1 ensures independent samples for the list)
+    # Measure encryption time in micro seconds (number=1: independent samples)
     enc_times = timeit.repeat(lambda: encrypt(plaintext, e, n), repeat=repetitions, number=1)
-    exec_times_encryption = [t * 1000 for t in enc_times]
+    exec_times_encryption = [t * 1000 * 1000 for t in enc_times]
         
     valid_ciphertext = encrypt(plaintext, e, n)
     
     # Measure decryption time
     dec_times = timeit.repeat(lambda: decrypt(valid_ciphertext, d, n), repeat=repetitions, number=1)
-    exec_times_decryption = [t * 1000 for t in dec_times]
+    exec_times_decryption = [t * 1000 * 1000 for t in dec_times]
         
     return exec_times_encryption, exec_times_decryption
 
 # GRAPH GENERATION - (partly generated with Gemini)
 def generate_plots(file_sizes, enc_avgs, enc_stds, dec_avgs, dec_stds):
     """
-    @brief Generates and saves the individual and combined plots.
+    @brief Generates side-by-side combined plots (Linear and Log-Log) 
+           to match the team's visual style.
     """
-    print("\nGenerating plots...")
+    print("\nGenerating formatted plots...")
 
-    # Plot of RSA Encryption Times
-    plot.figure(figsize=(10, 6))
-    plot.errorbar(file_sizes, enc_avgs, yerr=enc_stds, fmt='-o', color='blue', 
-                 capsize=5, capthick=1.5, label='RSA-2048 Hybrid Encrypt')
-    
-    plot.xscale('log', base=2)
-    plot.yscale('log') 
-    plot.title('RSA-Based Encryption Times vs. File Size')
-    plot.xlabel('File Size (bytes)')
-    plot.ylabel('Execution Time (ms)') 
-    plot.grid(True, which="both", ls="--", alpha=0.5)
-    plot.legend()
-    plot.savefig('rsa_encrypt_plot.png', bbox_inches='tight', dpi=300)
-    plot.close() 
+    # Create the 1x2 side-by-side layout
+    fig, axes = plot.subplots(1, 2, figsize=(14, 6))
 
-    # Plot of RSA Decryption Times
-    plot.figure(figsize=(10, 6))
-    plot.errorbar(file_sizes, dec_avgs, yerr=dec_stds, fmt='-s', color='red', 
-                 capsize=5, capthick=1.5, label='RSA-2048 Hybrid Decrypt')
+    # --- LEFT SIDE: Linear plot ---
+    axes[0].errorbar(file_sizes, enc_avgs, yerr=enc_stds, marker='o', 
+                     linestyle='-', capsize=5, label='RSA Encrypt')
+    axes[0].errorbar(file_sizes, dec_avgs, yerr=dec_stds, marker='s', 
+                     linestyle='-', capsize=5, label='RSA Decrypt')
     
-    plot.xscale('log', base=2)
-    plot.yscale('log')
-    plot.title('RSA-Based Decryption Times vs. File Size')
-    plot.xlabel('File Size (bytes)')
-    plot.ylabel('Execution Time (ms)')
-    plot.grid(True, which="both", ls="--", alpha=0.5)
-    plot.legend()
-    plot.savefig('rsa_decrypt_plot.png', bbox_inches='tight', dpi=300)
-    plot.close()
+    axes[0].set_title("Linear Scale")
+    axes[0].set_xlabel("File Size (B)")
+    axes[0].set_ylabel("Time (Microseconds)") 
+    axes[0].grid(True, ls="--", alpha=0.5)
+    axes[0].legend()
+
+    # --- RIGHT SIDE: Log plot ---
+    axes[1].errorbar(file_sizes, enc_avgs, yerr=enc_stds, marker='o', 
+                     linestyle='-', capsize=5, label='RSA Encrypt')
+    axes[1].errorbar(file_sizes, dec_avgs, yerr=dec_stds, marker='s', 
+                     linestyle='-', capsize=5, label='RSA Decrypt')
     
-    # Plot of combined Encryption vs Decryption
-    plot.figure(figsize=(10, 6))
-    plot.errorbar(file_sizes, enc_avgs, yerr=enc_stds, fmt='-o', color='blue', 
-                 capsize=5, capthick=1.5, label='Encryption')
-    plot.errorbar(file_sizes, dec_avgs, yerr=dec_stds, fmt='-s', color='red', 
-                 capsize=5, capthick=1.5, label='Decryption')
-    
-    plot.xscale('log', base=2)
-    plot.yscale('log')
-    plot.title('Comparison: RSA Hybrid Encryption vs. Decryption')
-    plot.xlabel('File Size (bytes)')
-    plot.ylabel('Execution Time (ms)')
-    plot.grid(True, which="both", ls="--", alpha=0.5)
-    
-    # Place the legend so it doesnt cover the lines
-    plot.legend(loc='upper left')
-    plot.savefig('rsa_combined_plot.png', bbox_inches='tight', dpi=300)
-    plot.close()
+    axes[1].set_title("Log-Log Scale")
+    axes[1].set_xlabel("File Size (B)")
+    axes[1].set_ylabel("Time (Microseconds)")
+    axes[1].set_xscale('log') 
+    axes[1].set_yscale('log')
+    axes[1].grid(True, which="both", ls="--", alpha=0.5)
+    axes[1].legend()
+
+    # Apply tight layout and save/show the result
+    plot.tight_layout()
+    plot.savefig('rsa_team_formatted_plot.png', bbox_inches='tight', dpi=300)
+    plot.show()
 
     
 def run_performance_test():
@@ -221,7 +207,7 @@ def run_performance_test():
     all_dec_avgs, all_dec_stds = [], []
 
     # Header 
-    print(f"{'File Name':<20} | {'Mean (ms)':<12} | {'StdDev':<10} | {'95% CI'}")
+    print(f"{'File Name':<20} | {'Mean (μs)':<12} | {'StdDev':<10} | {'95% CI'}")
     print("-" * 75)
 
     for filename in file_names:
