@@ -7,6 +7,7 @@ import math
 results = []
 
 print("File Size       | Average Time | Median Time  | Std Dev    | CI (95%)")
+print("----------------+--------------+--------------+------------+---------")
 
 files = [
     (8, "file_8.bin"),
@@ -19,7 +20,13 @@ files = [
 ]
 
 for size, f in files:
-    all_times = sha_crypto.sha256_file(f, runs=500)
+    
+    if size <= 512:
+        runs = 1000
+    else:
+        runs = 500
+    
+    all_times = sha_crypto.sha256_file(f, runs=runs)
     
     avg_time = statistics.mean(all_times)
     med_time = statistics.median(all_times)
