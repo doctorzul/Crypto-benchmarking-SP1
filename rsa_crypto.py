@@ -60,7 +60,7 @@ def encrypt(message_bytes, e, n):
         m_i = message_bytes[start_i:end_i] # the current block processed
 
         block_num_bytes = block_i.to_bytes(4, byteorder='big')
-        hash_input = block_num_bytes + r_bytes # Measure against two same plaintexts - include index
+        hash_input = block_num_bytes + r_bytes # To measure against two same plaintexts - include index
 
         keystream_block = hashlib.sha256(hash_input).digest() # unique hash for every block
 
@@ -152,8 +152,7 @@ def benchmark_rsa(filename, repetitions):
 # GRAPH GENERATION - (partly generated with Gemini)
 def generate_plots(file_sizes, enc_avgs, enc_stds, dec_avgs, dec_stds):
     """
-    @brief Generates side-by-side combined plots (Linear and Log-Log) 
-           to match the team's visual style.
+    @brief Generates side-by-side combined plots (Linear and Log-Log).
     """
     print("\nGenerating formatted plots...")
 
@@ -188,7 +187,7 @@ def generate_plots(file_sizes, enc_avgs, enc_stds, dec_avgs, dec_stds):
 
     # Apply tight layout and save/show the result
     plot.tight_layout()
-    plot.savefig('rsa_team_formatted_plot.png', bbox_inches='tight', dpi=300)
+    plot.savefig('rsa_public_combined_plot.png', bbox_inches='tight', dpi=300)
     plot.show()
 
     
