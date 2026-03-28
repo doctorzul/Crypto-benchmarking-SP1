@@ -9,7 +9,7 @@ def sha256_file(filepath, runs=100):
     timer = timeit.Timer(lambda: hashlib.sha256(data).digest())
 
     # Warm-up
-    timer.timeit(number=10)
+    timer.timeit(number=50)
 
     raw_times = timer.repeat(repeat=runs, number=1)
 
