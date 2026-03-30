@@ -11,9 +11,9 @@ def sha256_file(filepath, runs=100):
     # Warm-up
     timer.timeit(number=50)
 
-    raw_times = timer.repeat(repeat=runs, number=1)
+    raw_times = timer.repeat(repeat=runs, number=10)
 
-    return [t * 1000000 for t in raw_times]
+    return [(t / 10) * 1000000 for t in raw_times]
 
 if __name__ == "__main__":
     files = [
