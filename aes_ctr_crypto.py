@@ -51,7 +51,7 @@ def benchmark_aes(filename, iterations=100):
         iterations (int): Number of independent timing repetitions
 
     Returns:
-        tuple: Two lists containing encryption and decryption times in milliseconds
+        tuple: Two lists containing encryption and decryption times in microseconds
     """
     if not os.path.exists(filename):
         return [], []
@@ -59,11 +59,11 @@ def benchmark_aes(filename, iterations=100):
         data = f.read()
     key = os.urandom(32)
     enc_times = timeit.repeat(lambda: encrypt_ctr(key, data), repeat=iterations, number=1)
-    enc_times_ms = [t * 1000 for t in enc_times]
+    enc_times_us = [t * 1000000 for t in enc_times]
     nonce, ciphertext = encrypt_ctr(key, data)
     dec_times = timeit.repeat(lambda: decrypt_ctr(key, nonce, ciphertext), repeat=iterations, number=1)
-    dec_times_ms = [t * 1000 for t in dec_times]
-    return enc_times_ms, dec_times_ms
+    dec_times_us = [t * 1000000 for t in dec_times]
+    return enc_times_us, dec_times_us
 
 def benchmark_aes_random(size, iterations=100):
     """Measures performance using randomly generated data
@@ -73,16 +73,16 @@ def benchmark_aes_random(size, iterations=100):
         iterations (int): Number of independent timing repetitions
 
     Returns:
-        tuple: Two lists containing encryption and decryption times in milliseconds
+        tuple: Two lists containing encryption and decryption times in microseconds
     """
     data = os.urandom(size)
     key = os.urandom(32)
     enc_times = timeit.repeat(lambda: encrypt_ctr(key, data), repeat=iterations, number=1)
-    enc_times_ms = [t * 1000 for t in enc_times]
+    enc_times_us = [t * 1000000 for t in enc_times]
     nonce, ciphertext = encrypt_ctr(key, data)
     dec_times = timeit.repeat(lambda: decrypt_ctr(key, nonce, ciphertext), repeat=iterations, number=1)
-    dec_times_ms = [t * 1000 for t in dec_times]
-    return enc_times_ms, dec_times_ms
+    dec_times_us = [t * 1000000 for t in dec_times]
+    return enc_times_us, dec_times_us
 
 ################## Execution ##################
 
@@ -103,14 +103,14 @@ def generate_plots(file_sizes, enc_avgs, enc_stds, dec_avgs, dec_stds):
     axes[0].errorbar(file_sizes, dec_avgs, yerr=dec_stds, marker='s', linestyle='-', capsize=5, label='AES Decrypt')
     axes[0].set_title("Linear Scale")
     axes[0].set_xlabel("File Size (B)")
-    axes[0].set_ylabel("Time (Milliseconds)")
+    axes[0].set_ylabel("Time (Microseconds)")
     axes[0].grid(True, ls="--", alpha=0.5)
     axes[0].legend()
     axes[1].errorbar(file_sizes, enc_avgs, yerr=enc_stds, marker='o', linestyle='-', capsize=5, label='AES Encrypt')
     axes[1].errorbar(file_sizes, dec_avgs, yerr=dec_stds, marker='s', linestyle='-', capsize=5, label='AES Decrypt')
     axes[1].set_title("Log-Log Scale")
     axes[1].set_xlabel("File Size (B)")
-    axes[1].set_ylabel("Time (Milliseconds)")
+    axes[1].set_ylabel("Time (Microseconds)")
     axes[1].set_xscale('log')
     axes[1].set_yscale('log')
     axes[1].grid(True, which="both", ls="--", alpha=0.5)
@@ -129,7 +129,7 @@ def run_performance_test():
     all_enc_avgs, all_enc_stds = [], []
     all_dec_avgs, all_dec_stds = [], []
 
-    print(f"{'File Name':<20} | {'Mean (ms)':<10} | {'StdDev':<10} | {'95% CI'}")
+    print(f"{'File Name':<20} | {'Mean (us)':<10} | {'StdDev':<10} | {'95% CI'}")
     print("-" * 75)
 
     for filename in file_names:
@@ -157,7 +157,7 @@ def run_performance_test_random():
     all_enc_avgs, all_enc_stds = [], []
     all_dec_avgs, all_dec_stds = [], []    
 
-    print(f"{'Size (Bytes)':<15} | {'Mean (ms)':<10} | {'StdDev':<10} | {'95% CI'}")
+    print(f"{'Size (Bytes)':<15} | {'Mean (us)':<10} | {'StdDev':<10} | {'95% CI'}")
     print("-" * 75)
 
     for size in file_sizes:
