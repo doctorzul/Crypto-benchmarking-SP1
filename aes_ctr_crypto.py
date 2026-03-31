@@ -116,7 +116,7 @@ def generate_plots(file_sizes, enc_avgs, enc_stds, dec_avgs, dec_stds):
     axes[1].grid(True, which="both", ls="--", alpha=0.5)
     axes[1].legend()
     plot.tight_layout()
-    plot.savefig('aes_combined_plot_fixed.png', bbox_inches='tight', dpi=300) # Rename graph for every rerun
+    plot.savefig('aes_combined_plot_random_2.png', bbox_inches='tight', dpi=300) # Rename graph for every rerun
     plot.show()
 
 def run_performance_test():
