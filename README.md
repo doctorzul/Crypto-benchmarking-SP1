@@ -50,3 +50,22 @@ Alternate between run_performance_test() and run_performance_test_random() to sw
 if __name__ == "__main__":
     run_performance_test() # Alternate between run_performance_test() and run_performance_test_random()
 ```
+
+### SHA-256
+
+Benchmarking is split two files: ```sha_crypto.py``` and ```sha_crypto_benchmark.py```. The first scripts use haslib to implement the method, which the second script then calls upon.
+
+```sha_crypto.py``` benchmarks how long a SHA-256 hash function computation takes using repeated timing with warm-up to get stable measurements.
+```sha_crypto_benchmark.py``` call the function in the previous script to benchmark the SHA-256 hash function implementation across multiple input sizes, measuring mean runtime and variability. It computes throughput (bytes per microsecond) and a 95% confidence interval, then uses Matplotlib and Pandas to plot timing vs file size on linear and log-log scales.
+
+Run the main file:
+```python
+python sha_crypto_benchmark.py
+```
+A linear-linear and a log-log plot will be shown and a file (sha256_benchmark.png) will be saved with the same contents.
+
+Running ```sha_crypto.py``` is possible, though not strictly necessary:
+```python
+python sha_crypto.py
+```
+Running this file will give per-file distributions of SHA-256 timing (mean, median, stddev in microseconds) without any higher-level interpretation of the listed files.
